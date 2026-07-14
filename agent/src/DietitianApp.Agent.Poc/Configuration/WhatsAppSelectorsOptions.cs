@@ -11,9 +11,20 @@ public sealed class WhatsAppSelectorsOptions
 
     public string[] SearchBoxSelectors { get; init; } =
     [
+        "input[role='textbox'][data-tab='3']",
+        "input[role='textbox'][aria-label*='Arat']",
+        "input[role='textbox'][aria-label*='Search']",
         "div[role='textbox'][contenteditable='true'][aria-label*='Search']",
         "div[role='textbox'][contenteditable='true'][aria-label*='Ara']",
         "div[contenteditable='true'][data-tab='3']"
+    ];
+
+    public string[] SearchActivationSelectors { get; init; } =
+    [
+        "#side button[aria-label*='Search']",
+        "#side button[aria-label*='Ara']",
+        "#side div[role='button'][aria-label*='Search']",
+        "#side div[role='button'][aria-label*='Ara']"
     ];
 
     public string ChatTitleSelector { get; init; } = "header span[title]";

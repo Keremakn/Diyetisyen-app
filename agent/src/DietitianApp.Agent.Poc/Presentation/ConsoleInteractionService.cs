@@ -1,6 +1,7 @@
 using DietitianApp.Agent.Poc.Application.UseCases;
 using DietitianApp.Agent.Poc.Models;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace DietitianApp.Agent.Poc.Presentation;
 
@@ -30,7 +31,7 @@ public sealed class ConsoleInteractionService
         Console.WriteLine($"Mesaj: {message}");
         Console.Write("Devam etmek icin EVET yazin: ");
 
-        var approval = Console.ReadLine();
+        var approval = ReadInteractiveLine(cancellationToken);
         var approved = string.Equals(approval, "EVET", StringComparison.Ordinal);
         if (!approved)
         {
@@ -79,13 +80,51 @@ public sealed class ConsoleInteractionService
         {
             cancellationToken.ThrowIfCancellationRequested();
             Console.Write($"{label}: ");
-            var value = Console.ReadLine();
+            var value = ReadInteractiveLine(cancellationToken);
             if (!string.IsNullOrWhiteSpace(value))
             {
-                return value.Trim();
+                return value.Trim().Normalize(NormalizationForm.FormC);
             }
 
             Console.WriteLine($"{label} bos olamaz.");
+        }
+    }
+
+    private static string? ReadInteractiveLine(CancellationToken cancellationToken)
+    {
+        if (Console.IsInputRedirected)
+        {
+            return Console.ReadLine();
+        }
+
+        var value = new StringBuilder();
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var key = Console.ReadKey(intercept: true);
+
+            if (key.Key == ConsoleKey.Enter)
+            {
+                Console.WriteLine();
+                return value.ToString();
+            }
+
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (value.Length > 0)
+                {
+                    value.Length--;
+                    Console.Write("\b \b");
+                }
+
+                continue;
+            }
+
+            if (!char.IsControl(key.KeyChar))
+            {
+                value.Append(key.KeyChar);
+                Console.Write(key.KeyChar);
+            }
         }
     }
 }

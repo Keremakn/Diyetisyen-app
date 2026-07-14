@@ -8,6 +8,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
+using System.Text;
+
+Console.InputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+Console.OutputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
 var builder = Host.CreateApplicationBuilder(args);
 
