@@ -1,0 +1,42 @@
+namespace DietitianApp.Agent.Poc.Configuration;
+
+public sealed class WhatsAppSelectorsOptions
+{
+    public string[] CaptchaIndicators { get; init; } =
+    [
+        "text=captcha",
+        "text=CAPTCHA",
+        "text=robot"
+    ];
+
+    public string[] SearchBoxSelectors { get; init; } =
+    [
+        "div[role='textbox'][contenteditable='true'][aria-label*='Search']",
+        "div[role='textbox'][contenteditable='true'][aria-label*='Ara']",
+        "div[contenteditable='true'][data-tab='3']"
+    ];
+
+    public string ChatTitleSelector { get; init; } = "header span[title]";
+
+    public string[] MessageBoxSelectors { get; init; } =
+    [
+        "footer div[role='textbox'][contenteditable='true'][aria-label*='message']",
+        "footer div[role='textbox'][contenteditable='true'][aria-label*='mesaj']",
+        "footer div[contenteditable='true']"
+    ];
+
+    public string[] LoginReadySelectors { get; init; } =
+    [
+        "div[role='textbox'][contenteditable='true'][aria-label*='Search']",
+        "div[role='textbox'][contenteditable='true'][aria-label*='Ara']",
+        "div[contenteditable='true'][data-tab='3']"
+    ];
+
+    public string[] QrLoginSelectors { get; init; } =
+    [
+        "canvas[aria-label*='Scan']",
+        "canvas",
+        "text=Use WhatsApp on your computer",
+        "text=WhatsApp Web"
+    ];
+}
