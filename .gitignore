@@ -1,16 +1,1 @@
-bin/
-obj/
-.vs/
-.vscode/
-
-logs/*
-!logs/.gitkeep
-
-artifacts/screenshots/*
-!artifacts/screenshots/.gitkeep
-artifacts/traces/*
-!artifacts/traces/.gitkeep
-
-src/DietitianApp.Agent.Poc/.profile/
-*.user
-*.suo
+.DS_Store
