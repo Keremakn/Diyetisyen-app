@@ -51,6 +51,16 @@ public sealed class ConsoleInteractionService
         {
             _logger.LogInformation("Automation completed: {Message}", result.Message);
             Console.WriteLine(result.Message);
+            if (!string.IsNullOrWhiteSpace(result.ScreenshotPath))
+            {
+                Console.WriteLine($"Screenshot: {result.ScreenshotPath}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.TracePath))
+            {
+                Console.WriteLine($"Trace: {result.TracePath}");
+            }
+
             return 0;
         }
 

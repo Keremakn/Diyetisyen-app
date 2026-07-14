@@ -6,7 +6,8 @@ public sealed record AutomationResult(
     string? ScreenshotPath = null,
     string? TracePath = null)
 {
-    public static AutomationResult Ok(string message) => new(true, message);
+    public static AutomationResult Ok(string message, string? screenshotPath = null, string? tracePath = null) =>
+        new(true, message, screenshotPath, tracePath);
 
     public static AutomationResult Fail(string message, string? screenshotPath = null, string? tracePath = null) =>
         new(false, message, screenshotPath, tracePath);

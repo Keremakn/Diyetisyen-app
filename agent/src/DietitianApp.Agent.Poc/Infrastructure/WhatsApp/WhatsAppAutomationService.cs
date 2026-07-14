@@ -87,21 +87,39 @@ public sealed class WhatsAppAutomationService : IWhatsAppAutomationService
             }
 
             await messageBox.ClickAsync();
+            await ClearFocusedInputAsync(page);
             await messageBox.FillAsync(request.Message);
+            if (!await WaitForComposerTextAsync(messageBox, request.Message, 3_000, cancellationToken))
+            {
+                return await FailWithArtifactsAsync(
+                    "Mesaj kutusu temizlenip hedef mesajla doldurulamadi. Mesaj gonderilmedi.",
+                    cancellationToken);
+            }
 
-            var sentMessageTextOutsideComposer = page.Locator(
-                $"xpath=//*[not(ancestor-or-self::footer) and " +
-                $"normalize-space(.)={ToXPathLiteral(request.Message)}]");
-            var matchingTextCountBeforeSend = await sentMessageTextOutsideComposer.CountAsync();
+            var sentMessage = page.Locator(
+                $"xpath=//*[@id='main']//*[@data-testid='msg-container' " +
+                $"and .//span[@aria-label='Siz:' or @aria-label='You:'] " +
+                $"and .//*[@data-testid='selectable-text' and normalize-space(.)={ToXPathLiteral(request.Message)}]]");
+            var sentMessageCountBeforeSend = await sentMessage.CountAsync();
+
+            var deliveredMessage = page.Locator(
+                $"xpath=//*[@id='main']//*[@data-testid='msg-container' " +
+                $"and .//span[@aria-label='Siz:' or @aria-label='You:'] " +
+                $"and .//*[@data-testid='selectable-text' and normalize-space(.)={ToXPathLiteral(request.Message)}] " +
+                $"and .//*[local-name()='title' and " +
+                $"(.='wds-ic-read' or .='wds-ic-check' or .='msg-dblcheck' or .='msg-check')]]");
+            var deliveredMessageCountBeforeSend = await deliveredMessage.CountAsync();
 
             var sendButton = await FirstVisibleAsync(
                 page,
                 [
+                    "footer button span[data-icon='send'] >> xpath=ancestor::button[1]",
+                    "footer [role='button'] span[data-icon='send'] >> xpath=ancestor::*[@role='button'][1]",
                     "footer button[aria-label='Gönder']",
                     "footer button[aria-label='Send']",
                     "footer span[data-icon='send']"
                 ],
-                1_000);
+                3_000);
 
             if (sendButton is not null)
             {
@@ -113,13 +131,25 @@ public sealed class WhatsAppAutomationService : IWhatsAppAutomationService
             }
 
             if (!await WaitForCountIncreaseAsync(
-                    sentMessageTextOutsideComposer,
-                    matchingTextCountBeforeSend,
+                    sentMessage,
+                    sentMessageCountBeforeSend,
                     10_000,
                     cancellationToken))
             {
                 return await FailWithArtifactsAsync(
                     "Mesaj gonderme islemi tetiklendi ancak giden mesaj balonunda dogrulanamadi.",
+                    cancellationToken);
+            }
+
+            if (!await WaitForDeliveredOrRetryAsync(
+                    page,
+                    request.Message,
+                    deliveredMessage,
+                    deliveredMessageCountBeforeSend,
+                    cancellationToken))
+            {
+                return await FailWithArtifactsAsync(
+                    "Mesaj WhatsApp'ta olustu ancak tek tik/cift tik durumuna gecmedi. Beklemede veya gonderilemedi olabilir.",
                     cancellationToken);
             }
 
@@ -186,6 +216,116 @@ public sealed class WhatsAppAutomationService : IWhatsAppAutomationService
         var modifier = OperatingSystem.IsMacOS() ? "Meta" : "Control";
         await page.Keyboard.PressAsync($"{modifier}+A");
         await page.Keyboard.PressAsync("Backspace");
+    }
+
+    private static async Task<bool> WaitForComposerTextAsync(
+        ILocator messageBox,
+        string expectedMessage,
+        int timeoutMilliseconds,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddMilliseconds(timeoutMilliseconds);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var currentText = await messageBox.InnerTextAsync();
+            if (string.Equals(currentText.Trim(), expectedMessage, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            await Task.Delay(100, cancellationToken);
+        }
+
+        return false;
+    }
+
+    private async Task<bool> WaitForDeliveredOrRetryAsync(
+        IPage page,
+        string message,
+        ILocator deliveredMessage,
+        int deliveredMessageCountBeforeSend,
+        CancellationToken cancellationToken)
+    {
+        var retryAttempts = 0;
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(45);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await deliveredMessage.CountAsync() > deliveredMessageCountBeforeSend)
+            {
+                return true;
+            }
+
+            if (retryAttempts < 2 && await RetryFailedMessageIfVisibleAsync(page, message, cancellationToken))
+            {
+                retryAttempts++;
+                _logger.LogInformation("WhatsApp send failed indicator detected. Retry attempt {Attempt}.", retryAttempts);
+            }
+
+            await Task.Delay(500, cancellationToken);
+        }
+
+        return false;
+    }
+
+    private async Task<bool> RetryFailedMessageIfVisibleAsync(
+        IPage page,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        var failedMessage = page.Locator(
+            $"xpath=//*[@id='main']//*[@data-testid='msg-container' " +
+            $"and .//span[@aria-label='Siz:' or @aria-label='You:'] " +
+            $"and .//*[@data-testid='selectable-text' and normalize-space(.)={ToXPathLiteral(message)}] " +
+            $"and (.//*[local-name()='title' and " +
+            $"(contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'error') " +
+            $"or contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'failed') " +
+            $"or contains(., 'hata'))] " +
+            $"or .//*[contains(translate(@aria-label, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'failed') " +
+            $"or contains(@aria-label, 'gonderilemedi') " +
+            $"or contains(@aria-label, 'gönderilemedi') " +
+            $"or contains(@aria-label, 'hata')])]");
+
+        if (!await WaitUntilVisibleAsync(failedMessage.Last, 250))
+        {
+            return false;
+        }
+
+        await failedMessage.Last.ClickAsync();
+
+        var retryOption = await FirstVisibleAsync(
+            page,
+            [
+                "text=/Tekrar dene/i",
+                "text=/Tekrar gönder/i",
+                "text=/Yeniden gönder/i",
+                "text=/Yeniden dene/i",
+                "text=/Retry/i",
+                "text=/Resend/i",
+                "[role='button']:has-text('Tekrar dene')",
+                "[role='button']:has-text('Tekrar gönder')",
+                "[role='button']:has-text('Yeniden gönder')",
+                "[role='button']:has-text('Yeniden dene')",
+                "[role='button']:has-text('Retry')",
+                "[role='button']:has-text('Resend')",
+                "[role='menuitem']:has-text('Tekrar dene')",
+                "[role='menuitem']:has-text('Tekrar gönder')",
+                "[role='menuitem']:has-text('Yeniden gönder')",
+                "[role='menuitem']:has-text('Yeniden dene')",
+                "[role='menuitem']:has-text('Retry')",
+                "[role='menuitem']:has-text('Resend')"
+            ],
+            3_000);
+
+        if (retryOption is null)
+        {
+            return false;
+        }
+
+        await retryOption.ClickAsync();
+        await Task.Delay(500, cancellationToken);
+        return true;
     }
 
     private async Task<string?> CaptureScreenshotSafeAsync(CancellationToken cancellationToken)
