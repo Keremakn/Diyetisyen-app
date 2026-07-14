@@ -1,43 +1,22 @@
-# Manual Test Checklist
+# Faz 1 manuel test checklist
 
-1. Ilk QR girisi
-   - `dotnet run --project src/DietitianApp.Agent.Poc` calistirilir.
-   - WhatsApp Web acilir ve QR kod telefondan taranir.
-   - Oturum acilinca yalnizca girilen test grubuna devam edilir.
+Yalnızca `DYT-TEST-001`, `DYT-TEST-002`, `DYT-TEST-003` sahte gruplarını kullanın. Gerçek danışan grubu kullanmayın.
 
-2. Oturumun korunmasi
-   - Uygulama kapatilir ve tekrar calistirilir.
-   - QR istenmeden mevcut persistent profile ile oturum acilmalidir.
+1. İlk bağlantıda QR açılır, tarama sonrası durum hazır olur.
+2. Uygulama kapanıp açılınca aynı browser profile ile oturum korunur.
+3. `DYT-TEST-001` tam adı doğrulanır ve kaydedilir.
+4. Var olmayan grup kaydedilmez.
+5. Benzer isimli iki grupta yalnızca tam eşleşme doğrulanır.
+6. Üç test grubuna açık onay sonrası sırayla toplu gönderim yapılır.
+7. Bir grup başarısızken sonuç kaydedilir ve diğerlerine devam edilir.
+8. Gönderim sırasında İptal seçilir; kalanlar Cancelled olur ve UI kontrolü geri gelir.
+9. Geçmişte başarısız öğeler yeni kontrollü batch olarak yeniden denenir; başarılılar dahil edilmez.
+10. İnternet kesilince yanlış gruba gönderim olmaz, anlaşılır hata ve artifact oluşur.
+11. WhatsApp oturumu düşürülünce işlem güvenli durur/QR bekler.
+12. Mesaj alanı selector'ı bulunamazsa mesaj yazılmaz ve screenshot/trace oluşur.
+13. Arama alanı selector'ı bulunamazsa sohbet seçilmez ve işlem durur.
+14. Uygulama kapatılıp yeniden açılır; pencere ve veriler yüklenir.
+15. SQLite grup, şablon ve geçmiş kayıtları yeniden açılışta korunur; seed çoğalmaz.
+16. Processing sırasında süreç zorla kapatılır; yarım batch yeniden açılışta geçmişte görünür.
 
-3. Test grubuna mesaj gonderimi
-   - Yalnizca test amacli bir WhatsApp grubu girilir.
-   - Grup adi ve mesaj ekranda dogru gorunur.
-   - `EVET` yazildiginda mesaj gonderilir ve loglanir.
-
-4. Var olmayan grup
-   - Bilinmeyen bir grup adi girilir.
-   - Tam eslesme bulunamadigi icin gonderim durmalidir.
-
-5. Benzer isimli grup
-   - Ornegin `Test Grup` ve `Test Grup 2` varsa yalnizca tam ad girildiginde secim yapilmalidir.
-   - Benzer ilk sonuc otomatik secilmemelidir.
-
-6. Internet kesilmesi
-   - Ag baglantisi kesilerek uygulama calistirilir.
-   - Sonsuz bekleme olmamali, hata loglanmali ve gerekiyorsa artefact alinmalidir.
-
-7. Oturum dusmesi
-   - WhatsApp Web cihaz oturumu telefondan kapatilir.
-   - Uygulama QR/login beklemeli, sure dolarsa gonderim yapmamalidir.
-
-8. Mesaj kutusunun bulunamamasi
-   - DOM degisikligi veya selector problemi simule edilir.
-   - Mesaj gonderilmemeli, hata sonucu donmelidir.
-
-9. Kullanicinin onay vermemesi
-   - Onay ekraninda `EVET` disinda bir deger girilir.
-   - Tarayici otomasyonuna gecilmeden islem durmalidir.
-
-10. Ctrl+C ile kapanma
-    - Islem sirasinda Ctrl+C basilir.
-    - Uygulama 130 cikis kodu ile guvenli kapanmalidir.
+Her testte `%LOCALAPPDATA%\DietitianApp\Logs` ile `Artifacts` klasörlerini ve `agent.db` kayıtlarını kontrol edin.
